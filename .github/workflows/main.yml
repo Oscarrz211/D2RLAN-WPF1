@@ -1,0 +1,101 @@
+```yaml
+name: Build D2RLaunch-WPF
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Compile on Windows
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Locate project and solution files
+        shell: pwsh
+        run: |
+          Write-Host "Searching for solution and project files..."
+          Get-ChildItem -Path . -Recurse -File |
+            Where-Object {
+              $_.Extension -in '.sln', '.slnx', '.csproj'
+            } |
+            Select-Object -ExpandProperty FullName
+
+      - name: Locate .NET SDK configuration
+        shell: pwsh
+        run: |
+          Get-ChildItem -Path . -Recurse -Filter global.json -File |
+            Select-Object -ExpandProperty FullName
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup NuGet
+        uses: NuGet/setup-nuget@v2
+
+      - name: Restore and build
+        shell: pwsh
+        run: |
+          $projects = @(
+            Get-ChildItem -Path . -Recurse -Filter *.sln -File
+          )
+
+          if ($projects.Count -gt 0) {
+            foreach ($project in $projects) {
+              Write-Host "Building solution: $($project.FullName)"
+
+              msbuild $project.FullName `
+                /restore `
+                /m `
+                /p:Configuration=Release `
+                /p:Platform="Any CPU"
+
+              if ($LASTEXITCODE -ne 0) {
+                throw "Build failed: $($project.Name)"
+              }
+            }
+          }
+          else {
+            $projects = @(
+              Get-ChildItem -Path . -Recurse -Filter *.csproj -File
+            )
+
+            if ($projects.Count -eq 0) {
+              throw "No .sln or .csproj files found."
+            }
+
+            foreach ($project in $projects) {
+              Write-Host "Building project: $($project.FullName)"
+
+              msbuild $project.FullName `
+                /restore `
+                /m `
+                /p:Configuration=Release
+
+              if ($LASTEXITCODE -ne 0) {
+                throw "Build failed: $($project.Name)"
+              }
+            }
+          }
+
+      - name: Collect compiled files
+        if: success()
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path artifacts -Force |
+            Out-Null
+
+          Get-ChildItem -Path . -Recurse -File |
+            Where-Object {
+              $_.FullName -match '[\\/]bin[\\/]Release[\\/]' -and
+              $_.Extension -in '.exe', '.dll', '._
+```
