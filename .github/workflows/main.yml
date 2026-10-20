@@ -1,4 +1,3 @@
-```yaml
 name: Build D2RLaunch-WPF
 
 on:
@@ -98,4 +97,3 @@ jobs:
             Where-Object {
               $_.FullName -match '[\\/]bin[\\/]Release[\\/]' -and
               $_.Extension -in '.exe', '.dll', '._
-```
