@@ -12,7 +12,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Setup MSBuild
@@ -21,20 +21,21 @@ jobs:
       - name: Setup NuGet
         uses: NuGet/setup-nuget@v2
 
-      - name: Restore NuGet packages
+      - name: Restore packages
         shell: pwsh
         run: nuget restore src/D2RLAN/D2RLAN.sln
 
-      - name: Build solution
+      - name: Compile solution
         shell: pwsh
-        run: |
-          msbuild src/D2RLAN/D2RLAN.sln /p:Configuration=Release /m /verbosity:minimal
+        run: msbuild src/D2RLAN/D2RLAN.sln /p:Configuration=Release /m /verbosity:minimal
 
-      - name: Collect compiled files
+      - name: Upload build output
         if: success()
-        shell: pwsh
-        run: |
-          $source = "src/D2RLAN/D2RLAN/bin/Release"
-
-          if (-not (Test-Path $source)) {
-            Write-Error "Build output fold
+        uses: actions/upload-artifact@v4
+        with:
+          name: D2RLAN-WPF-Compiled
+          path: |
+            src/D2RLAN/D2RLAN/bin/Release/
+            src/D2RLAN/bin/Release/
+          if-no-files-found: warn
+          retention-days: 7
